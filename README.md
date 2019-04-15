@@ -1,2 +1,2 @@
-# rl_pathways
-Investiating non-negativity constraints in RL
+# Pathway Reinforcement Learning
+Investigating non-negativity constraints in RL
