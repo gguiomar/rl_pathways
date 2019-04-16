@@ -32,10 +32,21 @@ class timing_task_csc():
         self.reward_probability = reward_probability
         self.punishment_probability = punishment_probability
 
-        self.generate_environment()
+        self.generate_environment()«
 
+    
+    """
+    GENERATORS
+    These functions generate the necessary ingredients to define the Markov Decision Process (MDP)
+    of the interval timing categorisation. [PUT REFERENCE]
 
+    ---- Short description of the task ---
+    ...
+    """
     def generate_environment(self):
+        """
+        Main generating function: Takes the state representation generates the state sequence.
+        """
         self.generate_state_representation()
         self.generate_state_sequence()
         self.generate_environment_solution(0)
@@ -84,7 +95,44 @@ class timing_task_csc():
                     cnt += 1
         
         self.trial_st = self.trial_st.astype(int)
-       
+    
+    def generate_environment_solution(self, plot_flag):
+
+        # generates the policy for the optimal agent
+
+        # map second tone to state identity
+        self.second_tone_state = np.zeros(self.n_trials)
+        for tr, st in enumerate(self.second_tone_list):
+            self.second_tone_state[tr] = np.nonzero(
+                self.trials[tr][:, st])[0][0]
+
+        # map state identity to optimal action
+        self.opt_act = 2 * np.ones((self.n_trials, self.n_total_states))
+        for tr in range(self.n_trials):
+            for i, state in enumerate(self.trial_st[tr]):
+                if state >= self.second_tone_state[tr]:
+                    # split decisions in the middle
+                    if tr < self.n_trials/2:  # short decision
+                        self.opt_act[tr, state] = 0
+                    else:  # long decision
+                        self.opt_act[tr, state] = 1
+
+        # take into account that the opt_act vector will have a set of 2's
+        # in the end because of the 0 states after the episode finishes
+
+        if plot_flag:
+            plt.figure(figsize=(20, 10))
+            plt.title('Optimal actions')
+            plt.imshow(self.opt_act)
+            plt.colorbar(fraction=0.01)
+            plt.ylabel('trial type')
+            plt.xlabel('state')
+            plt.show()
+
+    """
+    VISUALIZATIONS
+    These functions show human readable representations of the M
+    """
     def plot_state_representation(self):
         
         fig = plt.figure(figsize=(15,10))
@@ -103,39 +151,11 @@ class timing_task_csc():
             
         plt.show()
     
-    
-    def generate_environment_solution(self, plot_flag):
-        
-        # generates the policy for the optimal agent
-        
-        # map second tone to state identity
-        self.second_tone_state = np.zeros(self.n_trials)
-        for tr,st in enumerate(self.second_tone_list):
-            self.second_tone_state[tr] = np.nonzero(self.trials[tr][:,st])[0][0]
-
-        # map state identity to optimal action
-        self.opt_act = 2 * np.ones((self.n_trials, self.n_total_states))
-        for tr in range(self.n_trials):
-            for i,state in enumerate(self.trial_st[tr]):
-                if state >= self.second_tone_state[tr]:
-                    # split decisions in the middle
-                    if tr < self.n_trials/2: # short decision
-                        self.opt_act[tr,state] = 0
-                    else: # long decision
-                        self.opt_act[tr,state] = 1
-     
-        # take into account that the opt_act vector will have a set of 2's
-        # in the end because of the 0 states after the episode finishes
-        
-        if plot_flag:
-            plt.figure(figsize =(20,10))
-            plt.title('Optimal actions')
-            plt.imshow(self.opt_act)
-            plt.colorbar(fraction = 0.01)
-            plt.ylabel('trial type')
-            plt.xlabel('state')
-            plt.show()
-            
+    """
+    TESTING THE ENVIRONMENT
+    These functions go through all states and actions in order to check for
+    weird state,action transtions
+    """        
     def test_environment_all(self):
         
         for tt in range(self.trial_types):
@@ -150,7 +170,11 @@ class timing_task_csc():
             for j,current_state in enumerate(env.trial_st[i]):
                 next_state, reward = env.get_outcome(i, current_state, action)
                 print([i, current_state, action, next_state, reward])
-    
+
+    """
+    GET OUTCOME
+    Main function of the enviromment; defines the MDP
+    """
     def get_outcome(self, current_trial, current_state, action):
         
         next_state = 0

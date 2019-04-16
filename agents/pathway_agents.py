@@ -8,16 +8,14 @@ import copy as copy
 import sys
 import os
 
+
 class pathway_agents():
-    
-    # things to implement:
-    # 1. automatic splitting of trial identities (left,right) for any number of second tones
-    
-    def __init__(self, n_episodes, beta, gamma, rho, tsteps, second_tone_list, 
-    rwd_mag, pun_mag, print_flag, policy, alpha_i, save_history, learning_rule):
+
+    def __init__(self, n_episodes, beta, gamma, rho, tsteps, second_tone_list,
+                 rwd_mag, pun_mag, print_flag, policy, alpha_i, save_history, learning_rule):
 
         # agent variables
-        self.rwd_prob = 1   
+        self.rwd_prob = 1
         self.pun_prob = 1
         self.rwd_mag = rwd_mag
         self.pun_mag = pun_mag
@@ -30,7 +28,7 @@ class pathway_agents():
         self.print_flag = print_flag
         self.policy = policy
         self.alpha_i = alpha_i
-        self.save_history = save_history 
+        self.save_history = save_history
         self.learning_rule = learning_rule
         self.n_actions = 3
         self.n_pathways = 2
@@ -39,6 +37,10 @@ class pathway_agents():
         # importing the environment
         self.get_environment()
 
+    """
+    ENVIRONMENT IMPORT
+    This function imports the environment/task to be used later in training
+    """
     def get_environment(self):
 
         # this function calls the timing task classical conditioning environment only
@@ -54,9 +56,13 @@ class pathway_agents():
 
         from environments.timing_task_csc import timing_task_csc
 
-        self.env = timing_task_csc(self.tsteps, self.second_tone_list, self.rwd_mag, self.rwd_prob, self.pun_mag, self.pun_prob)
+        self.env = timing_task_csc(self.tsteps, self.second_tone_list,
+                                   self.rwd_mag, self.rwd_prob, self.pun_mag, self.pun_prob)
 
-    #  transfer functions for the td error ---
+    """
+    TRANSFER FUNCTIONS
+    These functions represent the transfer functions of the Reward Prediction Error used 
+    """
     def tdp(self, x):
         if x > 0:
             return x
@@ -72,9 +78,6 @@ class pathway_agents():
     def hev(self, v):
         return np.heaviside(v, 0)
 
-    def normalise_vec(self, vec):
-        return (vec-min(vec))/(max(vec)-min(vec))
-
     def nl_tdp(self, x):
         sc = 6
         return sc*np.tanh(x)+sc*0.9
@@ -83,7 +86,9 @@ class pathway_agents():
         sc = 5
         return sc*np.tanh(-x)+sc*0.5
 
-    # policies ---
+    """
+    AGENT POLICIES
+    """
     def e_greedy(self, V, epsilon):
 
         # e-greedy
@@ -99,7 +104,6 @@ class pathway_agents():
         # advantage function
 
         # big betas are lower temperatures -> more greedy
-
         e_x = np.exp(beta * A)
         action_probability = e_x / e_x.sum()
 
@@ -109,7 +113,9 @@ class pathway_agents():
 
         return selected_action
 
-    # tranining algorithm
+    """
+    TRAINIG ALGORITHMS
+    """
     def train_agent(self):
 
         current_state = 0
@@ -140,28 +146,31 @@ class pathway_agents():
         delta = 0
 
         # trial variables
-        trial_length = []
         state_visits = np.zeros(env.n_total_states)
 
         # value functions for the simulations
         V = np.zeros(env.n_total_states)  # state value function
-        Act = np.zeros((env.n_total_states, self.n_actions)) # action value function
-        A = np.random.uniform(0, 0.01, (self.n_pathways, env.n_total_states, self.n_actions))  # action weights
+        # action value function
+        Act = np.zeros((env.n_total_states, self.n_actions))
+        A = np.random.uniform(
+            0, 0.01, (self.n_pathways, env.n_total_states, self.n_actions))  # action weights
 
         # generating variables to record trial history
         if self.save_history:
             test_data = np.zeros((self.n_episodes, env.n_states, 6))
             V_h = np.zeros((self.n_episodes, env.n_total_states))
-            A_h = np.zeros((self.n_episodes, self.n_pathways, env.n_total_states, self.n_actions))
-            delta_h = np.zeros((self.n_episodes, len(self.second_tone_list), self.tsteps))
+            A_h = np.zeros((self.n_episodes, self.n_pathways,
+                            env.n_total_states, self.n_actions))
+            delta_h = np.zeros((self.n_episodes, len(
+                self.second_tone_list), self.tsteps))
             trial_seq = np.zeros((self.n_episodes, len(self.second_tone_list)))
 
         choices = np.zeros(self.n_test_episodes)
 
-
         for episode in range(self.n_episodes):
 
-            trial_type = np.random.choice(np.arange(len(self.second_tone_list)))
+            trial_type = np.random.choice(
+                np.arange(len(self.second_tone_list)))
             if self.save_history:
                 trial_seq[episode, trial_type] = 1
 
@@ -178,14 +187,16 @@ class pathway_agents():
                 if type(self.policy) == int:
                     # action selection ------
                     if self.policy == 0:
-                        action = env.opt_act[trial_type, current_state].astype(int)
+                        action = env.opt_act[trial_type,
+                                             current_state].astype(int)
                     elif self.policy == 1:
                         action = self.softmax(Act[current_state, :], self.beta)
                 else:  # semi-optimal policy
                     action = self.policy[t].astype(int)
 
                 # state update ------
-                next_state, reward = env.get_outcome(trial_type, current_state, action)
+                next_state, reward = env.get_outcome(
+                    trial_type, current_state, action)
 
                 # td update // reward has to be of the next_state ------
                 delta = reward + self.gamma * V[next_state] - V[current_state]
@@ -213,15 +224,22 @@ class pathway_agents():
                         V[current_state] += alpha_v[current_state] * delta
 
                         # actor weights
-                        A[0, current_state, action] += alpha_a[current_state] * A[0, current_state, action] * delta  # direct pathway
-                        A[1, current_state, action] += alpha_a[current_state] * A[1, current_state, action] * (-delta)  # indirect pathway
+                        A[0, current_state, action] += alpha_a[current_state] * \
+                            A[0, current_state, action] * \
+                            delta  # direct pathway
+                        A[1, current_state, action] += alpha_a[current_state] * \
+                            A[1, current_state, action] * \
+                            (-delta)  # indirect pathway
 
                         # constrain actor values to be positive - heaviside function
-                        A[0, current_state, action] = self.tdp(A[0, current_state, action])
-                        A[1, current_state, action] = self.tdp(A[1, current_state, action])
+                        A[0, current_state, action] = self.tdp(
+                            A[0, current_state, action])
+                        A[1, current_state, action] = self.tdp(
+                            A[1, current_state, action])
 
                         # calculate actor values
-                        Act[current_state, action] = w_D * A[0, current_state, action] - w_I * A[1, current_state, action]
+                        Act[current_state, action] = w_D * A[0, current_state,
+                                                             action] - w_I * A[1, current_state, action]
 
                     else:  # clamp the final states to zero (terminal states)
                         V[current_state] = 0
@@ -229,18 +247,22 @@ class pathway_agents():
                         A[1, current_state, action] = 0
                         Act[current_state, action] = 0
 
-
                 if self.learning_rule == 'transfer_function':
                     if current_state < env.n_total_states - 5:
                         # state value function updating
                         V[current_state] += alpha_v[current_state] * delta
 
                         # advantage updating - mark humphries transfer function
-                        A[0, current_state, action] += alpha_a[current_state] * (self.nl_tdp(delta) - A[0, current_state, action])  # direct pathway
-                        A[1, current_state, action] += alpha_a[current_state] * (self.nl_tdn(delta) - A[1, current_state, action])  # indirect pathway
+                        A[0, current_state, action] += alpha_a[current_state] * \
+                            (self.nl_tdp(delta) -
+                             A[0, current_state, action])  # direct pathway
+                        A[1, current_state, action] += alpha_a[current_state] * \
+                            (self.nl_tdn(delta) -
+                             A[1, current_state, action])  # indirect pathway
 
                         # calculate actor values
-                        Act[current_state, action] = w_D * A[0, current_state, action] - w_I * A[1, current_state, action]
+                        Act[current_state, action] = w_D * A[0, current_state,
+                                                             action] - w_I * A[1, current_state, action]
 
                     else:  # clamp the final states to zero (terminal states)
                         V[current_state] = 0
@@ -252,10 +274,12 @@ class pathway_agents():
                 if self.save_history:
                     V_h[episode, :] = V
                     A_h[episode, :] = A
-                    test_data[episode, t, :] = np.asarray([trial_type, current_state, action, next_state, reward, delta])
+                    test_data[episode, t, :] = np.asarray(
+                        [trial_type, current_state, action, next_state, reward, delta])
 
                 if self.print_flag and episode < 100:
-                    print([trial_type, current_state, action, next_state, reward, delta])
+                    print([trial_type, current_state,
+                           action, next_state, reward, delta])
 
                 # current state update
                 current_state = next_state
@@ -266,24 +290,27 @@ class pathway_agents():
                     diffV[episode] = np.sum((V-pV)**2)
                     for p in range(self.n_pathways):
                         for a in range(self.n_actions):
-                            diffA[episode, p, a] = np.sum((A[p, :, a] - pA[p, :, a])**2)
+                            diffA[episode, p, a] = np.sum(
+                                (A[p, :, a] - pA[p, :, a])**2)
 
                     # performance related variables
                     if episode > self.n_episodes - self.n_test_episodes:
                         if reward <= 0:
-                            choices[self.n_episodes - episode - self.n_test_episodes] = 0
+                            choices[self.n_episodes - episode -
+                                    self.n_test_episodes] = 0
                         if reward > 0:
-                            choices[self.n_episodes - episode - self.n_test_episodes] = 1
- 
+                            choices[self.n_episodes - episode -
+                                    self.n_test_episodes] = 1
+
                     break
 
         if self.save_history:
             data_dict_hist = {'V': V, 'state_visits': state_visits, 'A': A, 'Act': Act,
-                            'diffV': diffV, 'diffA': diffA, 'env': env, 'choices': choices,
-                            'test_data': test_data, 'diffV': diffV, 'diffA': diffA, 'trial_seq': trial_seq,
-                            'choices': choices, 'V_h': V_h, 'A_h': A_h, 'delta_h': delta_h}
+                              'diffV': diffV, 'diffA': diffA, 'env': env, 'choices': choices,
+                              'test_data': test_data, 'diffV': diffV, 'diffA': diffA, 'trial_seq': trial_seq,
+                              'choices': choices, 'V_h': V_h, 'A_h': A_h, 'delta_h': delta_h}
             return data_dict_hist
         else:
             data_dict_no_hist = {'V': V, 'state_visits': state_visits, 'A': A, 'Act': Act,
-                                'diffV': diffV, 'diffA': diffA, 'choices': choices}
+                                 'diffV': diffV, 'diffA': diffA, 'choices': choices}
             return data_dict_no_hist
