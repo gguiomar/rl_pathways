@@ -11,25 +11,24 @@ import os
 
 class pathway_agents():
 
-    def __init__(self, n_episodes, beta, gamma, rho, tsteps, second_tone_list,
-                 rwd_mag, pun_mag, print_flag, policy, alpha_i, save_history, learning_rule):
+    def __init__(self, param):
 
         # agent variables
         self.rwd_prob = 1
         self.pun_prob = 1
-        self.rwd_mag = rwd_mag
-        self.pun_mag = pun_mag
-        self.rho = rho
-        self.n_episodes = n_episodes
-        self.beta = beta
-        self.gamma = gamma
-        self.tsteps = tsteps
-        self.second_tone_list = second_tone_list
-        self.print_flag = print_flag
-        self.policy = policy
-        self.alpha_i = alpha_i
-        self.save_history = save_history
-        self.learning_rule = learning_rule
+        self.rwd_mag = param['rwd_mag']
+        self.pun_mag = param['pun_mag']
+        self.rho = param['rho']
+        self.n_episodes = param['n_episodes']
+        self.beta = param['beta']
+        self.gamma = param['gamma']
+        self.tsteps = param['tsteps']
+        self.second_tone_list = param['second_tone_list']
+        self.print_flag = param['print_flag']
+        self.policy = param['policy']
+        self.alpha_i = param['alpha_i']
+        self.save_history = param['save_history']
+        self.learning_rule =param['learning_rule']
         self.n_actions = 3
         self.n_pathways = 2
         self.n_test_episodes = 100
@@ -99,13 +98,13 @@ class pathway_agents():
 
         return int(action)
 
-    def softmax(self, A, beta):
+    def softmax(self, Act_v, beta):
         # Q can be either the state value function or the
-        # advantage function
+        # advantage function    
+        # big betas are lower temperatures -> more greedy 
 
-        # big betas are lower temperatures -> more greedy
-        e_x = np.exp(beta * A)
-        action_probability = e_x / e_x.sum()
+        ex = np.exp(beta * Act_v)
+        action_probability = ex / [ex.sum() if ex.sum() != 0 else 1]
 
         # multinomial sampling
         selected_action = np.argmax(
@@ -114,7 +113,7 @@ class pathway_agents():
         return selected_action
 
     """
-    TRAINIG ALGORITHMS
+    TRAINING ALGORITHMS
     """
     def train_agent(self):
 
@@ -187,8 +186,7 @@ class pathway_agents():
                 if type(self.policy) == int:
                     # action selection ------
                     if self.policy == 0:
-                        action = env.opt_act[trial_type,
-                                             current_state].astype(int)
+                        action = env.opt_act[trial_type, current_state].astype(int)
                     elif self.policy == 1:
                         action = self.softmax(Act[current_state, :], self.beta)
                 else:  # semi-optimal policy

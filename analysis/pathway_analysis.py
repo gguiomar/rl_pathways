@@ -26,10 +26,9 @@ class pathway_analysis():
     on vectors that are recurrently used in the code.
     """
     
-    def calc_perf(self):
+    def calc_perf(self, sd):
         """Calculates the performance of the agent on a single experiment."""
-        sim_data = self.sim_data
-        choices = sim_data['choices']
+        choices = sd['choices']
         return sum(choices)/choices.shape[0]
     
     def normalise_vec(self, vec):
@@ -123,38 +122,107 @@ class pathway_analysis():
     2. Value functions and their evolution
     3. Convergence properties of the algorithms
     """
-    def plot_sims(self):
 
+    def generate_grid_plot_pathways(self):
         sim_data = self.sim_data
 
-        print('State Value Function')
-        plt.plot(sim_data[0])
-        plt.show()
+        columns = 2
+        rows = 3
 
-        print('Advantage Functions:')
-        plt.plot(sim_data[2][:, 0], 'b', label='0')
-        plt.plot(sim_data[2][:, 1], 'r', label='1')
-        plt.plot(sim_data[2][:, 2], 'k', label='2')
+        fig = plt.figure(figsize=(30, 25))
+        gs = gridspec.GridSpec(rows, columns)
+
+        # average the data from all the simulations
+        avgData = avg_sims_pathways(sim_data)
+
+        avgV = avgData['avgV']
+        varV = avgData['varV']
+        avgA = avgData['avgA']
+        varA = avgData['varA']
+        avgDiffV = avgData['avgDiffV']
+        varDiffV = avgData['varDiffV']
+        avgDiffA = avgData['avgDiffA']
+        varDiffA = avgData['varDiffA']
+
+        # make this an array dependent variable
+        n_pathways = 2
+        n_actions = 3
+
+        x1 = np.arange(avgData['varV'].shape[0]).astype(int)
+        x2 = np.arange(avgData['avgDiffV'].shape[0]).astype(int)
+
+        colors = ['blue', 'green', 'red']
+        labels = ['L', 'R', 'H']
+
+        ax = []
+        for c in range(rows):
+            ax.append([])
+            for r in range(columns):
+                ax[c].append(fig.add_subplot(gs[c, r]))
+
+        ax[0][0].plot(x1, avgV, 'k', linewidth=1)
+        ax[0][0].fill_between(x1, avgV - varV, avgV +
+                              varV, color='gray', alpha=0.2)
+        ax[0][0].set_ylabel('$V(s_t)$')
+        ax[0][0].set_xlabel('$s_t$')
+        ax[0][0].set_title('State value function')
+        ax[0][1].plot(x2, avgDiffV, 'k', linewidth=1)
+        ax[0][1].fill_between(x2, avgDiffV - varDiffV,
+                              avgDiffV + varDiffV, color='gray', alpha=0.2)
+        ax[0][1].set_title('State value function convergence')
+        ax[0][1].set_ylabel('$V_{k+1}(t) -V_k(t)$')
+        ax[0][1].set_xlabel('episode')
+
+        # direct pathway
+        for a in range(n_actions):
+            ax[1][0].plot(avgA[0, a, :], color=colors[a], label=labels[a])
+            ax[1][0].fill_between(x1, avgA[0, a, :] - varA[0, a, :],
+                                  avgA[0, a, :] + varA[0, a, :], color=colors[a], alpha=0.1)
+
+        ax[1][0].set_title('Direct pathway')
+        ax[1][0].set_ylabel('$A(s_t,a)$')
+        ax[1][0].set_xlabel('$s_t$')
+
+        # indirect pathway
+        for a in range(n_actions):
+            ax[1][1].plot(avgA[1, a, :], color=colors[a], label=labels[a])
+            ax[1][1].fill_between(x1, avgA[1, a, :] - varA[1, a, :],
+                                  avgA[1, a, :] + varA[1, a, :], color=colors[a], alpha=0.1)
+        ax[1][1].set_title('Indirect pathway')
+        ax[1][1].set_ylabel('$A(s_t,a)$')
+        ax[1][1].set_xlabel('$s_t$')
+
+        # convergence - direct pathway
+        for a in range(3):
+            ax[2][0].plot(x2, avgDiffA[0, a, :],
+                          color=colors[a], label=labels[a])
+            ax[2][0].fill_between(x2, avgDiffA[0, a, :] - varDiffA[0, a, :],
+                                  avgDiffA[0, a, :] + varDiffA[0, a, :], color=colors[a], alpha=0.1)
+        ax[2][0].set_title('Direct pathway convergence')
+        ax[2][0].set_ylabel('$A_{k+1}(t) -A_k(t)$')
+        ax[2][0].set_xlabel('episode')
+
+        for a in range(3):
+            ax[2][1].plot(x2, avgDiffA[1, a, :],
+                          color=colors[a], label=labels[a])
+            ax[2][1].fill_between(x2, avgDiffA[1, a, :] - varDiffA[1, a, :],
+                                  avgDiffA[1, a, :] + varDiffA[1, a, :], color=colors[a], alpha=0.1)
+        ax[2][1].set_title('Indirect pathway convergence')
+        ax[2][1].set_ylabel('$A_{k+1}(t) -A_k(t)$')
+        ax[2][1].set_xlabel('episode')
+
         plt.legend()
         plt.show()
 
-        print('State Value function convergence')
-        plt.plot(sim_data[4])
-        plt.show()
-
-        print('State Visits')
-        plt.plot(sim_data[1])
-        plt.show()
-
-        # change this function's name to something more general as it's used to plot almost all information regarding states
+        fig.savefig("transfer_pathways_gridplot.png",
+                    bbox_inches='tight', dpi=400)
 
     def grid_plot_pathway_sim(self):
 
         sim_data = self.sim_data
 
-        V, state_visits, A, diffV, diffA = sim_data['V'], sim_data[
-            'state_visits'], sim_data['A'], sim_data['diffV'], sim_data['diffA']
-        sim_perf = calc_perf(sim_data)
+        V, state_visits, A, diffV, diffA = sim_data['V'], sim_data['state_visits'], sim_data['A'], sim_data['diffV'], sim_data['diffA']
+        sim_perf = self.calc_perf(self.sim_data)
 
         # create the figure object
         columns = 4
@@ -200,12 +268,10 @@ class pathway_analysis():
         ax[2][0].set_xlabel('State')
         ax[2][0].set_ylabel('Visits')
 
-        dV = sim_data['diffV']
-        dA = sim_data['diffA']
-        filtered_dV = sp.ndimage.filters.gaussian_filter1d(dV, 500)
-        filtered_dA = np.zeros(dA.shape)
+        filtered_dV = sp.ndimage.filters.gaussian_filter1d(diffV, 500)
+        filtered_dA = np.zeros(diffA.shape)
 
-        ax[2][1].plot(normalise_vec(filtered_dV), 'k')
+        ax[2][1].plot(self.normalise_vec(filtered_dV), 'k')
         ax[2][1].set_title('State Visits: ' + str(sim_perf))
         ax[2][1].set_xlabel('episode')
         ax[2][1].set_ylabel('$V(s_t)_k - V(s_t)_{k-1}$')
@@ -213,17 +279,19 @@ class pathway_analysis():
         for p in range(2):
             for a in range(3):
                 filtered_dA[:, p, a] = sp.ndimage.filters.gaussian_filter1d(
-                    dA[:, p, a], 500)
+                    diffA[:, p, a], 500)
 
         for a in range(3):
-            ax[3][0].plot(normalise_vec(filtered_dA[:, 0, a]), label=str(a))
+            ax[3][0].plot(self.normalise_vec(
+                filtered_dA[:, 0, a]), label=str(a))
 
         ax[3][0].set_title('Convergence - Direct Pathway')
         ax[3][0].set_xlabel('episode')
         ax[3][0].set_ylabel(r'$A^p_{k+1}(t) - A^p_k(t)$')
 
         for a in range(3):
-            ax[3][1].plot(normalise_vec(filtered_dA[:, 1, a]), label=str(a))
+            ax[3][1].plot(self.normalise_vec(
+                filtered_dA[:, 1, a]), label=str(a))
 
         ax[3][1].set_title('Convergence - Indirect Pathway')
         ax[3][1].set_xlabel('episode')
@@ -271,102 +339,3 @@ class pathway_analysis():
                     ax[2][a].plot(e[1, :, a])
 
         return fig
-
-    def plot_bulk_data(self):
-
-        sim_data = self.sim_data
-
-        A = sim_data['A']
-        fig = plt.figure(figsize=(10, 5))
-        plt.plot(np.sum(A[0, :, :], axis=1), 'b', label='$A^D$')
-        plt.plot(np.sum(A[1, :, :], axis=1), 'r', label='$A^I$')
-        plt.xlabel('State')
-        plt.ylabel('$A^p$')
-        plt.legend()
-
-        return fig
-
-    def generate_grid_plot_pathways(self):
-        sim_data = self.sim_data
-
-        columns = 2
-        rows = 3
-
-        fig = plt.figure(figsize=(30,25))
-        gs = gridspec.GridSpec(rows, columns)
-        
-        # average the data from all the simulations
-        avgData = avg_sims_pathways(sim_data)
-
-        avgV = avgData['avgV']
-        varV = avgData['varV']
-        avgA = avgData['avgA']
-        varA = avgData['varA']
-        avgDiffV = avgData['avgDiffV']
-        varDiffV = avgData['varDiffV']
-        avgDiffA = avgData['avgDiffA']
-        varDiffA = avgData['varDiffA']
-        
-        # make this an array dependent variable
-        n_pathways = 2
-        n_actions = 3
-
-        x1 = np.arange(avgData['varV'].shape[0]).astype(int)
-        x2 = np.arange(avgData['avgDiffV'].shape[0]).astype(int)
-
-        colors = ['blue','green','red']
-        labels = ['L', 'R', 'H']
-        
-        ax = []
-        for c in range(rows):
-            ax.append([])
-            for r in range(columns):
-                ax[c].append(fig.add_subplot(gs[c,r]))
-
-        ax[0][0].plot(x1, avgV, 'k', linewidth = 1)
-        ax[0][0].fill_between(x1, avgV - varV, avgV + varV, color = 'gray', alpha = 0.2)
-        ax[0][0].set_ylabel('$V(s_t)$')
-        ax[0][0].set_xlabel('$s_t$')
-        ax[0][0].set_title('State value function')  
-        ax[0][1].plot(x2, avgDiffV, 'k', linewidth = 1)
-        ax[0][1].fill_between(x2, avgDiffV - varDiffV, avgDiffV + varDiffV, color = 'gray', alpha = 0.2)
-        ax[0][1].set_title('State value function convergence')  
-        ax[0][1].set_ylabel('$V_{k+1}(t) -V_k(t)$')
-        ax[0][1].set_xlabel('episode')
-
-        # direct pathway
-        for a in range(n_actions):
-            ax[1][0].plot(avgA[0,a,:], color = colors[a], label = labels[a])
-            ax[1][0].fill_between(x1, avgA[0,a,:] - varA[0,a,:], avgA[0,a,:] + varA[0,a,:], color = colors[a], alpha = 0.1)
-            
-        ax[1][0].set_title('Direct pathway')    
-        ax[1][0].set_ylabel('$A(s_t,a)$')
-        ax[1][0].set_xlabel('$s_t$')
-        
-        # indirect pathway
-        for a in range(n_actions):
-            ax[1][1].plot(avgA[1,a,:], color = colors[a], label = labels[a])
-            ax[1][1].fill_between(x1, avgA[1,a,:] - varA[1,a,:], avgA[1,a,:] + varA[1,a,:], color = colors[a], alpha = 0.1)
-        ax[1][1].set_title('Indirect pathway')    
-        ax[1][1].set_ylabel('$A(s_t,a)$')
-        ax[1][1].set_xlabel('$s_t$')
-        
-        # convergence - direct pathway
-        for a in range(3):
-            ax[2][0].plot(x2, avgDiffA[0,a,:], color = colors[a], label = labels[a])
-            ax[2][0].fill_between(x2, avgDiffA[0,a,:] - varDiffA[0,a,:], avgDiffA[0,a,:] + varDiffA[0,a,:], color = colors[a], alpha = 0.1)
-        ax[2][0].set_title('Direct pathway convergence')    
-        ax[2][0].set_ylabel('$A_{k+1}(t) -A_k(t)$')
-        ax[2][0].set_xlabel('episode')
-        
-        for a in range(3):
-            ax[2][1].plot(x2, avgDiffA[1,a,:], color = colors[a], label = labels[a])
-            ax[2][1].fill_between(x2, avgDiffA[1,a,:] - varDiffA[1,a,:], avgDiffA[1,a,:] + varDiffA[1,a,:], color = colors[a], alpha = 0.1)
-        ax[2][1].set_title('Indirect pathway convergence')    
-        ax[2][1].set_ylabel('$A_{k+1}(t) -A_k(t)$')
-        ax[2][1].set_xlabel('episode')
-
-        plt.legend()
-        plt.show()
-
-        fig.savefig("transfer_pathways_gridplot.png", bbox_inches='tight', dpi = 400)

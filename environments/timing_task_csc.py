@@ -32,7 +32,7 @@ class timing_task_csc():
         self.reward_probability = reward_probability
         self.punishment_probability = punishment_probability
 
-        self.generate_environment()«
+        self.generate_environment()
 
     
     """
