@@ -7,6 +7,7 @@ import matplotlib.gridspec as gridspec
 import copy as copy
 import sys
 import os
+import math
 
 
 class pathway_agents():
@@ -98,17 +99,26 @@ class pathway_agents():
 
         return int(action)
 
-    def softmax(self, Act_v, beta):
-        # Q can be either the state value function or the
-        # advantage function    
-        # big betas are lower temperatures -> more greedy 
 
-        ex = np.exp(beta * Act_v)
-        action_probability = ex / [ex.sum() if ex.sum() != 0 else 1]
+    def softmax(self, A, beta):
+        """
+        Altered version of the softmax function that takes into accout numerical overflow
+        """
 
-        # multinomial sampling
-        selected_action = np.argmax(
-            np.random.multinomial(1, action_probability, size=1))
+        axis = None
+
+        x = A - A.max(axis=axis, keepdims=True)
+        y = np.exp(x * beta)
+
+        # avoiding numerical problems with the exponential - inifite values
+        # take into account that this might affect the dynamic range of the calculation - TEST
+
+        for i, e in enumerate(y):
+            if np.isinf(e):
+                y[i] = 1
+
+        action_prob = y / y.sum(axis=axis, keepdims=True)
+        selected_action = np.argmax(np.random.multinomial(1, action_prob, size=1))
 
         return selected_action
 

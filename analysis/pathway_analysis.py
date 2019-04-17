@@ -42,11 +42,11 @@ class pathway_analysis():
 
     def avg_sims_pathways(self):
         """
-        Averages the data from multiple simulations - Is called by grid plot
+        Averages the data from multiple simulations - Is called by avg_grid_plot_pathway()
         """
-        
 
         sim_data = self.sim_data
+
         # averaging state value function
         sim_n = len(sim_data)
         allV = np.zeros((sim_n,sim_data[0]['V'].shape[0]))
@@ -123,17 +123,21 @@ class pathway_analysis():
     3. Convergence properties of the algorithms
     """
 
-    def generate_grid_plot_pathways(self):
+    def avg_grid_plot_pathways(self, size):
+
+        """
+        Generates a grid plot from a batch of simulations - same as grid plot 
+        """
         sim_data = self.sim_data
 
         columns = 2
         rows = 3
 
-        fig = plt.figure(figsize=(30, 25))
+        fig = plt.figure(figsize = (size[0], size[1]))
         gs = gridspec.GridSpec(rows, columns)
 
         # average the data from all the simulations
-        avgData = avg_sims_pathways(sim_data)
+        avgData = self.avg_sims_pathways()
 
         avgV = avgData['avgV']
         varV = avgData['varV']
@@ -217,7 +221,7 @@ class pathway_analysis():
         fig.savefig("transfer_pathways_gridplot.png",
                     bbox_inches='tight', dpi=400)
 
-    def grid_plot_pathway_sim(self):
+    def grid_plot_pathways(self, size):
 
         sim_data = self.sim_data
 
@@ -228,8 +232,9 @@ class pathway_analysis():
         columns = 4
         rows = 2
 
-        fig = plt.figure(figsize=(25, 30))
+        fig = plt.figure(figsize=(size[0], size[1]))
         gs = gridspec.GridSpec(columns, rows)
+        gs.update(hspace=0.5)
 
         ax = []
         for c in range(columns):
