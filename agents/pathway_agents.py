@@ -1,4 +1,3 @@
-# RL agents with pathway separation
 import numpy as np
 import numpy as np
 import matplotlib.pyplot as plt
@@ -75,9 +74,6 @@ class pathway_agents():
         else:
             return 0
 
-    def hev(self, v):
-        return np.heaviside(v, 0)
-
     def nl_tdp(self, x):
         sc = 6
         return sc*np.tanh(x)+sc*0.9
@@ -98,7 +94,6 @@ class pathway_agents():
             action = np.argmax(V)
 
         return int(action)
-
 
     def softmax(self, A, beta):
         """
@@ -183,8 +178,6 @@ class pathway_agents():
             if self.save_history:
                 trial_seq[episode, trial_type] = 1
 
-            x = env.trials[trial_type, :, :]
-
             # comparing value functions
             pV = copy.copy(V)
             pA = copy.copy(A)
@@ -232,22 +225,15 @@ class pathway_agents():
                         V[current_state] += alpha_v[current_state] * delta
 
                         # actor weights
-                        A[0, current_state, action] += alpha_a[current_state] * \
-                            A[0, current_state, action] * \
-                            delta  # direct pathway
-                        A[1, current_state, action] += alpha_a[current_state] * \
-                            A[1, current_state, action] * \
-                            (-delta)  # indirect pathway
+                        A[0, current_state, action] += alpha_a[current_state] * A[0, current_state, action] * delta  # direct pathway
+                        A[1, current_state, action] += alpha_a[current_state] * A[1, current_state, action] * (-delta)  # indirect pathway
 
                         # constrain actor values to be positive - heaviside function
-                        A[0, current_state, action] = self.tdp(
-                            A[0, current_state, action])
-                        A[1, current_state, action] = self.tdp(
-                            A[1, current_state, action])
+                        A[0, current_state, action] = self.tdp(A[0, current_state, action])
+                        A[1, current_state, action] = self.tdp(A[1, current_state, action])
 
                         # calculate actor values
-                        Act[current_state, action] = w_D * A[0, current_state,
-                                                             action] - w_I * A[1, current_state, action]
+                        Act[current_state, action] = w_D * A[0, current_state, action] - w_I * A[1, current_state, action]
 
                     else:  # clamp the final states to zero (terminal states)
                         V[current_state] = 0

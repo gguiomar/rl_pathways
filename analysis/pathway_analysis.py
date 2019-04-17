@@ -269,7 +269,7 @@ class pathway_analysis():
         ax[1][1].set_ylabel('A(S,Right)')
 
         ax[2][0].plot(state_visits, 'k')
-        ax[2][0].set_title('State Visits: ')
+        ax[2][0].set_title('State Visits')
         ax[2][0].set_xlabel('State')
         ax[2][0].set_ylabel('Visits')
 
@@ -277,7 +277,7 @@ class pathway_analysis():
         filtered_dA = np.zeros(diffA.shape)
 
         ax[2][1].plot(self.normalise_vec(filtered_dV), 'k')
-        ax[2][1].set_title('State Visits: ' + str(sim_perf))
+        ax[2][1].set_title('Convergence - State Value Function')
         ax[2][1].set_xlabel('episode')
         ax[2][1].set_ylabel('$V(s_t)_k - V(s_t)_{k-1}$')
 
