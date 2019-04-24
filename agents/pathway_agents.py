@@ -62,6 +62,10 @@ class pathway_agents():
     TRANSFER FUNCTIONS
     These functions represent the transfer functions of the Reward Prediction Error used 
     """
+
+    def set_nl_td_parameters(self):
+
+
     def tdp(self, x):
         if x > 0:
             return x
@@ -81,6 +85,19 @@ class pathway_agents():
     def nl_tdn(self, x):
         sc = 5
         return sc*np.tanh(-x)+sc*0.5
+
+    # RUN THIS
+    def plot_transfer_function(self):
+        x = np.linspace(-10, 10, 100)
+        fig = plt.figure(figsize=(10, 5))
+        plt.plot(x, self.nl_tdp(x), 'b', label='direct')
+        plt.plot(x, self.nl_tdn(x), 'r', label='indirect')
+        plt.axvline(x=0, color='k', linewidth='0.3')
+        plt.axhline(y=0, color='k', linewidth='0.3')
+        plt.xlabel('$\delta_t$')
+        plt.ylabel('$f (\delta_t)$')
+        plt.legend()
+        return fig
 
     """
     AGENT POLICIES
@@ -162,14 +179,15 @@ class pathway_agents():
         # generating variables to record trial history
         if self.save_history:
             test_data = np.zeros((self.n_episodes, env.n_states, 6))
-            V_h = np.zeros((self.n_episodes, env.n_total_states))
-            A_h = np.zeros((self.n_episodes, self.n_pathways,
-                            env.n_total_states, self.n_actions))
-            delta_h = np.zeros((self.n_episodes, len(
-                self.second_tone_list), self.tsteps))
+            #V_h = np.zeros((self.n_episodes, env.n_total_states))
+            #A_h = np.zeros((self.n_episodes, self.n_pathways,
+            #                env.n_total_states, self.n_actions))
+            #delta_h = np.zeros((self.n_episodes, len(
+            #    self.second_tone_list), self.tsteps))
             trial_seq = np.zeros((self.n_episodes, len(self.second_tone_list)))
 
         choices = np.zeros(self.n_test_episodes)
+        behaviour_h = [] # episode, state, choice_type = premature, correct, incorrect
 
         for episode in range(self.n_episodes):
 
@@ -196,13 +214,15 @@ class pathway_agents():
                     action = self.policy[t].astype(int)
 
                 # state update ------
-                next_state, reward = env.get_outcome(
+                next_state, reward, choice_type = env.get_outcome(
                     trial_type, current_state, action)
 
+                if choice_type == 1 or choice_type == 2 or choice_type == 3:
+                    behaviour_h.append([episode, current_state, choice_type])
                 # td update // reward has to be of the next_state ------
                 delta = reward + self.gamma * V[next_state] - V[current_state]
-                if self.save_history:
-                    delta_h[episode, trial_type, t] = delta
+                #if self.save_history:
+                #    delta_h[episode, trial_type, t] = delta
 
                 # calculating alpha -------
                 state_visits[current_state] += 1
@@ -247,16 +267,11 @@ class pathway_agents():
                         V[current_state] += alpha_v[current_state] * delta
 
                         # advantage updating - mark humphries transfer function
-                        A[0, current_state, action] += alpha_a[current_state] * \
-                            (self.nl_tdp(delta) -
-                             A[0, current_state, action])  # direct pathway
-                        A[1, current_state, action] += alpha_a[current_state] * \
-                            (self.nl_tdn(delta) -
-                             A[1, current_state, action])  # indirect pathway
+                        A[0, current_state, action] += alpha_a[current_state] * (self.nl_tdp(delta) - A[0, current_state, action])  # direct pathway
+                        A[1, current_state, action] += alpha_a[current_state] * (self.nl_tdn(delta) - A[1, current_state, action])  # indirect pathway
 
                         # calculate actor values
-                        Act[current_state, action] = w_D * A[0, current_state,
-                                                             action] - w_I * A[1, current_state, action]
+                        Act[current_state, action] = w_D * A[0, current_state, action] - w_I * A[1, current_state, action]
 
                     else:  # clamp the final states to zero (terminal states)
                         V[current_state] = 0
@@ -266,8 +281,8 @@ class pathway_agents():
 
                 # saving relevant variables ------
                 if self.save_history:
-                    V_h[episode, :] = V
-                    A_h[episode, :] = A
+                    #V_h[episode, :] = V
+                    #A_h[episode, :] = A
                     test_data[episode, t, :] = np.asarray(
                         [trial_type, current_state, action, next_state, reward, delta])
 
@@ -279,6 +294,8 @@ class pathway_agents():
                 current_state = next_state
 
                 if current_state == env.n_total_states-5:
+                    
+                    #behaviour_h.append([episode, current_state, choice_type])
 
                     # calculating differences
                     diffV[episode] = np.sum((V-pV)**2)
@@ -295,16 +312,35 @@ class pathway_agents():
                         if reward > 0:
                             choices[self.n_episodes - episode -
                                     self.n_test_episodes] = 1
-
                     break
 
         if self.save_history:
             data_dict_hist = {'V': V, 'state_visits': state_visits, 'A': A, 'Act': Act,
                               'diffV': diffV, 'diffA': diffA, 'env': env, 'choices': choices,
                               'test_data': test_data, 'diffV': diffV, 'diffA': diffA, 'trial_seq': trial_seq,
-                              'choices': choices, 'V_h': V_h, 'A_h': A_h, 'delta_h': delta_h}
+                              'choices': choices}
             return data_dict_hist
         else:
             data_dict_no_hist = {'V': V, 'state_visits': state_visits, 'A': A, 'Act': Act,
-                                 'diffV': diffV, 'diffA': diffA, 'choices': choices}
+                                 'diffV': diffV, 'diffA': diffA, 'choices': choices, 'behaviour_h': np.asarray(behaviour_h)}
             return data_dict_no_hist
+
+
+    def test_agent(self, n_trials, A):
+
+        env = self.env
+        behaviour_ht = []
+        w_D = 1 + self.rho
+        w_I = 1 - self.rho
+        Act = w_D * A[0, :, :] - w_I * A[1, :, :]
+
+        for tr in range(n_trials, A):
+            trial_type = np.random.choice(np.arange(len(self.second_tone_list)))
+            for s in range(env.n_states):
+                current_state = next_state
+                action = self.softmax(Act[current_state, :], self.beta)
+                next_state, reward, choice_type = env.get_outcome(trial_type, current_state, action)
+                if choice_type == 1 or choice_type == 2 or choice_type == 3:
+                        behaviour_ht.append([episode, current_state, choice_type])
+
+        return behaviour_ht
