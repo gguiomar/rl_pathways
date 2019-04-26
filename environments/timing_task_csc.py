@@ -129,6 +129,13 @@ class timing_task_csc():
             plt.xlabel('state')
             plt.show()
 
+    def get_action_type(self, value):
+
+        self.ct_dict = {'normal': 0, 'premature': 1, 'correct': 2, 'incorrect': 3}
+        for i, k in enumerate(self.ct_dict.keys()):
+            if value == i:
+                return k
+
     """
     VISUALIZATIONS
     These functions show human readable representations of the M
@@ -157,11 +164,12 @@ class timing_task_csc():
     weird state,action transtions
     """        
     def test_environment_all(self):
-        
         for tt in range(self.trial_types):
             for cs in self.trial_st[tt]:
                 for a in range(self.n_actions):
-                    print([tt, cs, a], self.get_outcome(tt, cs, a))
+                    ns, rwd, ct = self.get_outcome(tt, cs, a)
+                    ch_s = self.get_action_type(ct)
+                    print([tt, cs, a], [ns, rwd, ch_s])
                     
     def test_environment_action(self, action):
         current_state = 0
@@ -180,6 +188,7 @@ class timing_task_csc():
         next_state = 0
         reward = 0
         check_valid_state = np.argwhere(self.trial_st[current_trial] == current_state).shape[0] # should be > 0
+        choice_type = 0 # 0,1,2,3 - normal, premature, correct, incorrect
             
         if check_valid_state: 
 
@@ -190,13 +199,19 @@ class timing_task_csc():
                 # if a decision is made before the terminal states
                 if current_state < self.n_total_states - 5: # buffer states 
                     
+                    # CORRECT ACTION
                     if action == self.opt_act[current_trial, current_state]:
                         reward = self.reward_magnitude
                         next_state = self.n_total_states - 5 # transition into terminal states
+                        choice_type = 2 #
+                    # INCORRECT ACTION
                     else:                                                       
                         reward = self.punishment_magnitude
                         next_state = self.n_total_states - 5 # transition into terminal states
-                
+                        if current_state <= self.n_states:
+                            choice_type = 1 # PREMATURE ACTION
+                        else:
+                            choice_type = 3 # INCORRECT ACTION
                 # when we are in the terminal states
                 elif self.n_total_states - 5 <= current_state < self.n_total_states - 1:
                     reward = 0
@@ -221,4 +236,4 @@ class timing_task_csc():
             reward = 0
 
         
-        return next_state, reward
+        return next_state, reward, choice_type

@@ -33,6 +33,14 @@ class pathway_agents():
         self.n_pathways = 2
         self.n_test_episodes = 100
 
+        # non-linear transfer function parameters
+        self.a_tdp = 6
+        self.a_tdn = 5
+        self.b_tdp = 0.9
+        self.b_tdn = 0.5
+        self.c_tdp = 0.9
+        self.c_tdn = 0.5
+
         # importing the environment
         self.get_environment()
 
@@ -63,8 +71,7 @@ class pathway_agents():
     These functions represent the transfer functions of the Reward Prediction Error used 
     """
 
-    def set_nl_td_parameters(self):
-
+    # add function to change the non_linear trasnfer function parameters
 
     def tdp(self, x):
         if x > 0:
@@ -78,15 +85,24 @@ class pathway_agents():
         else:
             return 0
 
+    # non-linear td transfer function
     def nl_tdp(self, x):
-        sc = 6
-        return sc*np.tanh(x)+sc*0.9
+        #sc = 6
+        return self.a_tdp * (np.tanh(x + self.c_tdp) + self.b_tdp)
 
     def nl_tdn(self, x):
-        sc = 5
-        return sc*np.tanh(-x)+sc*0.5
+        #sc = 5
+        return self.a_tdn * (np.tanh(-x + self.c_tdp) + self.b_tdn)
 
-    # RUN THIS
+    def set_nl_td_parameters(self, p_tdp, p_tdn):
+        # setting the parameters for the transfer function
+        self.a_tdp = p_tdp[0]
+        self.b_tdp = p_tdp[1]
+        self.c_tdp = p_tdp[2]
+        self.a_tdn = p_tdn[0]
+        self.b_tdn = p_tdn[1]
+        self.c_tdn = p_tdn[2]
+
     def plot_transfer_function(self):
         x = np.linspace(-10, 10, 100)
         fig = plt.figure(figsize=(10, 5))
@@ -328,19 +344,23 @@ class pathway_agents():
 
     def test_agent(self, n_trials, A):
 
+        current_state = 0
+        next_state = 0
+
         env = self.env
         behaviour_ht = []
         w_D = 1 + self.rho
         w_I = 1 - self.rho
         Act = w_D * A[0, :, :] - w_I * A[1, :, :]
 
-        for tr in range(n_trials, A):
+        for episode in range(n_trials):
             trial_type = np.random.choice(np.arange(len(self.second_tone_list)))
-            for s in range(env.n_states):
+            for t in range(env.n_states):
                 current_state = next_state
+                Act = w_D * A[0, current_state, :] - w_I * A[1, current_state, :]
                 action = self.softmax(Act[current_state, :], self.beta)
                 next_state, reward, choice_type = env.get_outcome(trial_type, current_state, action)
                 if choice_type == 1 or choice_type == 2 or choice_type == 3:
-                        behaviour_ht.append([episode, current_state, choice_type])
+                    behaviour_ht.append([episode, current_state, choice_type])
 
         return behaviour_ht

@@ -122,11 +122,32 @@ class pathway_analysis():
     2. Value functions and their evolution
     3. Convergence properties of the algorithms
     """
+    def plot_behaviour(self, sim_data, size, ep_r):
+
+        sim_data = self.sim_data
+
+        fig = plt.figure(figsize=(size[0], size[1]))
+        if ep_r == 'False':
+            bhv = sim_data['behaviour_h']
+        else:
+            bhv = sim_data['behaviour_h'][ep_r[0]:ep_r[1]]
+
+        ch1 = bhv[bhv[:, 2] == 1]
+        ch1_d = np.delete(ch1, 2, 1)
+        ch2 = bhv[bhv[:, 2] == 2]
+        ch2_d = np.delete(ch2, 2, 1)
+        ch3 = bhv[bhv[:, 2] == 3]
+        ch3_d = np.delete(ch3, 2, 1)
+
+        plt.scatter(ch1_d[:, 1], ch1_d[:, 0], color='k')
+        plt.scatter(ch2_d[:, 1], ch2_d[:, 0], color='g')
+        plt.scatter(ch3_d[:, 1], ch3_d[:, 0], color='r')
+
+        return fig
 
     def avg_grid_plot_pathways(self, size):
-
         """
-        Generates a grid plot from a batch of simulations - same as grid plot 
+        Generates a grid plot from a batch of simulations - multiple grid plots
         """
         sim_data = self.sim_data
 
@@ -221,7 +242,10 @@ class pathway_analysis():
         fig.savefig("transfer_pathways_gridplot.png",
                     bbox_inches='tight', dpi=400)
 
-    def grid_plot_pathways(self, size):
+    def grid_plot_pathways(self, size, save_plots):
+        """
+        Plotting for a single simulation
+        """
 
         sim_data = self.sim_data
 
@@ -302,6 +326,14 @@ class pathway_analysis():
         ax[3][1].set_xlabel('episode')
         ax[3][1].set_ylabel(r'$A^p_{k+1}(t) - A^p_k(t)$')
 
+        # BEHAVIOUR PLOT
+        fig2 = self.plot_behaviour(sim_data, size, 'False')
+
+
+        if save_plots:
+            fig.savefig(save_plots+'.png', bbox_inches='tight', dpi=400)
+            fig2.savefig(save_plots+'behav.png', bbox_inches='tight', dpi=400)
+            
         return fig
 
     def grid_plot_learning_hist(self, only_show):
@@ -342,5 +374,70 @@ class pathway_analysis():
             for i, e in enumerate(A_h):
                 if i % only_show == 0:
                     ax[2][a].plot(e[1, :, a])
+
+        return fig
+
+    def grid_plot_all_sims(self, size):
+        """
+        Plotting a batch of simulations without averaging -- all lines are drawn
+        """
+        # calling the data structure
+        sim_data = self.sim_data
+        #sim_perf = self.calc_perf(self.sim_data)
+        sim_n = len(sim_data)
+
+        # create the figure object
+        columns = 3
+        rows = 3
+        fig = plt.figure(figsize=(size[0], size[1]))
+        gs = gridspec.GridSpec(columns, rows)
+        gs.update(hspace=0.5)
+        ax = []
+        for c in range(columns):
+            ax.append([])
+            for r in range(rows):
+                ax[c].append(fig.add_subplot(gs[c, r]))
+        
+        # plotting individual simulations
+        for i in range(sim_n):
+
+            V, A, diffV, diffA = sim_data[i]['V'], sim_data[i]['A'], sim_data[i]['diffV'], sim_data[i]['diffA']
+
+            ax[0][0].plot(V)
+            ax[1][0].plot(A[0, :, 2], label='D1')
+            ax[1][1].plot(A[0, :, 0], label='D1')
+            ax[1][2].plot(A[0, :, 1], label='D1')
+            ax[2][0].plot(A[1, :, 2], label='A2A')
+            ax[2][1].plot(A[1, :, 0], label='A2A')
+            ax[2][2].plot(A[1, :, 1], label='A2A')
+
+            filtered_dV = sp.ndimage.filters.gaussian_filter1d(diffV, 500)
+            filtered_dA = np.zeros(diffA.shape)
+
+            ax[2][0].plot(self.normalise_vec(filtered_dV))
+
+            for p in range(2):
+                for a in range(3):
+                    filtered_dA[:, p, a] = sp.ndimage.filters.gaussian_filter1d(
+                        diffA[:, p, a], 500)
+
+            for a in range(3):
+                ax[0][1].plot(self.normalise_vec(
+                    filtered_dA[:, 0, a]), label=str(a))
+
+            for a in range(3):
+                ax[0][2].plot(self.normalise_vec(
+                    filtered_dA[:, 1, a]), label=str(a))
+
+            # titles
+            ax[0][0].set_title('V')
+            ax[0][1].set_title('A conv dir')
+            ax[0][2].set_title('A conv ind')
+            ax[1][0].set_title('ADH')
+            ax[1][1].set_title('ADL')
+            ax[1][2].set_title('ADR')
+            ax[2][0].set_title('AIH')
+            ax[2][1].set_title('AIL')
+            ax[2][2].set_title('AIR')
 
         return fig
