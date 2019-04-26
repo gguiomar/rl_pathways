@@ -34,12 +34,16 @@ class pathway_agents():
         self.n_test_episodes = 100
 
         # non-linear transfer function parameters
-        self.a_tdp = 6
-        self.a_tdn = 5
-        self.b_tdp = 0.9
-        self.b_tdn = 0.5
-        self.c_tdp = 0.9
-        self.c_tdn = 0.5
+        self.a_tdp = 1
+        self.a_tdn = 1
+        self.b_tdp = 1
+        self.b_tdn = 1
+        self.c_tdp = 1
+        self.c_tdn = 1
+        self.d_tdp = 1
+        self.d_tdn = 1
+        self.e_tdp = 0
+        self.e_tdn = 0
 
         # importing the environment
         self.get_environment()
@@ -87,21 +91,26 @@ class pathway_agents():
 
     # non-linear td transfer function
     def nl_tdp(self, x):
-        #sc = 6
-        return self.a_tdp * (np.tanh(x + self.c_tdp) + self.b_tdp)
+        #return self.a_tdp * (np.tanh(x + self.c_tdp) + self.b_tdp) # old transfer function
+        return self.e_tdp + self.a_tdp / (self.b_tdp + self.c_tdp*np.exp(-self.d_tdp*x))
 
     def nl_tdn(self, x):
-        #sc = 5
-        return self.a_tdn * (np.tanh(-x + self.c_tdp) + self.b_tdn)
+        #return self.a_tdn * (np.tanh(-x + self.c_tdn) + self.b_tdn) # old transfer function
+        return self.e_tdn + self.a_tdn / (self.b_tdn + self.c_tdn*np.exp(self.d_tdn*x))
 
     def set_nl_td_parameters(self, p_tdp, p_tdn):
         # setting the parameters for the transfer function
         self.a_tdp = p_tdp[0]
         self.b_tdp = p_tdp[1]
         self.c_tdp = p_tdp[2]
+        self.d_tdp = p_tdp[3]
         self.a_tdn = p_tdn[0]
         self.b_tdn = p_tdn[1]
         self.c_tdn = p_tdn[2]
+        self.d_tdn = p_tdn[3]
+        # ---
+        self.e_tdp = p_tdp[4]
+        self.e_tdn = p_tdn[4]
 
     def plot_transfer_function(self):
         x = np.linspace(-10, 10, 100)

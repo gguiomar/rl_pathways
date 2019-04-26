@@ -327,12 +327,12 @@ class pathway_analysis():
         ax[3][1].set_ylabel(r'$A^p_{k+1}(t) - A^p_k(t)$')
 
         # BEHAVIOUR PLOT
-        fig2 = self.plot_behaviour(sim_data, size, 'False')
+        # fig2 = self.plot_behaviour(sim_data, size, 'False')
 
 
         if save_plots:
             fig.savefig(save_plots+'.png', bbox_inches='tight', dpi=400)
-            fig2.savefig(save_plots+'behav.png', bbox_inches='tight', dpi=400)
+            #fig2.savefig(save_plots+'behav.png', bbox_inches='tight', dpi=400)
             
         return fig
 
