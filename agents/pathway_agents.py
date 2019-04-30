@@ -44,6 +44,8 @@ class pathway_agents():
         self.d_tdn = 1
         self.e_tdp = 0
         self.e_tdn = 0
+        self.f_tdp = 0
+        self.f_tdn = 0
 
         # importing the environment
         self.get_environment()
@@ -92,11 +94,11 @@ class pathway_agents():
     # non-linear td transfer function
     def nl_tdp(self, x):
         #return self.a_tdp * (np.tanh(x + self.c_tdp) + self.b_tdp) # old transfer function
-        return self.e_tdp + self.a_tdp / (self.b_tdp + self.c_tdp*np.exp(-self.d_tdp*x))
+        return self.e_tdp + self.a_tdp / (self.b_tdp + self.c_tdp*np.exp(-self.d_tdp*x + self.d_tdp))
 
     def nl_tdn(self, x):
         #return self.a_tdn * (np.tanh(-x + self.c_tdn) + self.b_tdn) # old transfer function
-        return self.e_tdn + self.a_tdn / (self.b_tdn + self.c_tdn*np.exp(self.d_tdn*x))
+        return self.e_tdn + self.a_tdn / (self.b_tdn + self.c_tdn*np.exp(self.d_tdn*x + self.f_tdn))
 
     def set_nl_td_parameters(self, p_tdp, p_tdn):
         # setting the parameters for the transfer function
@@ -111,6 +113,8 @@ class pathway_agents():
         # ---
         self.e_tdp = p_tdp[4]
         self.e_tdn = p_tdn[4]
+        self.e_tdp = p_tdp[5]
+        self.e_tdn = p_tdn[5]
 
     def plot_transfer_function(self):
         x = np.linspace(-10, 10, 100)
